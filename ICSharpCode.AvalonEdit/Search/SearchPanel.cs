@@ -337,7 +337,7 @@ namespace ICSharpCode.AvalonEdit.Search
 			if (!string.IsNullOrEmpty(SearchPattern)) {
 				int offset = textArea.Caret.Offset;
 				if (changeSelection) {
-					textArea.ClearSelection();
+					textArea.SelectionManager.ClearSelection();
 				}
 				// We cast from ISearchResult to SearchResult; this is safe because we always use the built-in strategy
 				foreach (SearchResult result in strategy.FindAll(textArea.Document, 0, textArea.Document.TextLength)) {
@@ -360,7 +360,7 @@ namespace ICSharpCode.AvalonEdit.Search
 		void SelectResult(SearchResult result)
 		{
 			textArea.Caret.Offset = result.StartOffset;
-			textArea.Selection = Selection.Create(textArea, result.StartOffset, result.EndOffset);
+			textArea.SelectionManager.Selection = Selection.Create(textArea, result.StartOffset, result.EndOffset);
 			textArea.Caret.BringCaretToView();
 			// show caret even if the editor does not have the Keyboard Focus
 			textArea.Caret.Show();

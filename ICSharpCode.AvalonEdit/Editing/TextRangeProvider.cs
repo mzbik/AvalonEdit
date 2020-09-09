@@ -280,7 +280,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 		public void Select()
 		{
 			Log("{0}.Select()", ID);
-			textArea.Selection = new SimpleSelection(textArea,
+			textArea.SelectionManager.Selection = new SimpleSelection(textArea,
 				new TextViewPosition(doc.GetLocation(segment.Offset)),
 				new TextViewPosition(doc.GetLocation(segment.EndOffset)));
 		}

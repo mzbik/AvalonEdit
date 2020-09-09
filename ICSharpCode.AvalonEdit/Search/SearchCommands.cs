@@ -87,8 +87,8 @@ namespace ICSharpCode.AvalonEdit.Search
 		void ExecuteFind(object sender, ExecutedRoutedEventArgs e)
 		{
 			panel.Open();
-			if (!(TextArea.Selection.IsEmpty || TextArea.Selection.IsMultiline))
-				panel.SearchPattern = TextArea.Selection.GetText();
+			if (!(TextArea.SelectionManager.Selection.IsEmpty || TextArea.SelectionManager.Selection.IsMultiline))
+				panel.SearchPattern = TextArea.SelectionManager.Selection.GetText();
 			Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.Input, (Action)delegate { panel.Reactivate(); });
 		}
 

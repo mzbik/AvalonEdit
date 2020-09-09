@@ -814,8 +814,8 @@ namespace ICSharpCode.AvalonEdit
 			get {
 				// We'll get the text from the whole surrounding segment.
 				// This is done to ensure that SelectedText.Length == SelectionLength.
-				if (textArea.Document != null && !textArea.Selection.IsEmpty)
-					return textArea.Document.GetText(textArea.Selection.SurroundingSegment);
+				if (textArea.Document != null && !textArea.SelectionManager.Selection.IsEmpty)
+					return textArea.Document.GetText(textArea.SelectionManager.Selection.SurroundingSegment);
 				else
 					return string.Empty;
 			}
@@ -827,7 +827,7 @@ namespace ICSharpCode.AvalonEdit
 					int length = this.SelectionLength;
 					textArea.Document.Replace(offset, length, value);
 					// keep inserted text selected
-					textArea.Selection = SimpleSelection.Create(textArea, offset, offset + value.Length);
+					textArea.SelectionManager.Selection = SimpleSelection.Create(textArea, offset, offset + value.Length);
 				}
 			}
 		}
@@ -851,10 +851,10 @@ namespace ICSharpCode.AvalonEdit
 		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public int SelectionStart {
 			get {
-				if (textArea.Selection.IsEmpty)
+				if (textArea.SelectionManager.Selection.IsEmpty)
 					return textArea.Caret.Offset;
 				else
-					return textArea.Selection.SurroundingSegment.Offset;
+					return textArea.SelectionManager.Selection.SurroundingSegment.Offset;
 			}
 			set {
 				Select(value, SelectionLength);
@@ -867,8 +867,8 @@ namespace ICSharpCode.AvalonEdit
 		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public int SelectionLength {
 			get {
-				if (!textArea.Selection.IsEmpty)
-					return textArea.Selection.SurroundingSegment.Length;
+				if (!textArea.SelectionManager.Selection.IsEmpty)
+					return textArea.SelectionManager.Selection.SurroundingSegment.Length;
 				else
 					return 0;
 			}
@@ -887,7 +887,7 @@ namespace ICSharpCode.AvalonEdit
 				throw new ArgumentOutOfRangeException("start", start, "Value must be between 0 and " + documentLength);
 			if (length < 0 || start + length > documentLength)
 				throw new ArgumentOutOfRangeException("length", length, "Value must be between 0 and " + (documentLength - start));
-			textArea.Selection = SimpleSelection.Create(textArea, start, start + length);
+			textArea.SelectionManager.Selection = SimpleSelection.Create(textArea, start, start + length);
 			textArea.Caret.Offset = start + length;
 		}
 

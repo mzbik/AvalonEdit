@@ -126,7 +126,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 			if (textArea != null && textArea.Document != null) {
 				args.Handled = true;
 				textArea.Caret.Offset = textArea.Document.TextLength;
-				textArea.Selection = SimpleSelection.Create(textArea, 0, textArea.Document.TextLength);
+				textArea.SelectionManager.Selection = SimpleSelection.Create(textArea, 0, textArea.Document.TextLength);
 			}
 		}
 
@@ -141,7 +141,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 				TextArea textArea = GetTextArea(target);
 				if (textArea != null && textArea.Document != null) {
 					args.Handled = true;
-					textArea.ClearSelection();
+					textArea.SelectionManager.ClearSelection();
 					MoveCaret(textArea, direction);
 					textArea.Caret.BringCaretToView();
 				}
@@ -156,7 +156,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 					args.Handled = true;
 					TextViewPosition oldPosition = textArea.Caret.Position;
 					MoveCaret(textArea, direction);
-					textArea.Selection = textArea.Selection.StartSelectionOrSetEndpoint(oldPosition, textArea.Caret.Position);
+					textArea.SelectionManager.Selection = textArea.SelectionManager.Selection.StartSelectionOrSetEndpoint(oldPosition, textArea.Caret.Position);
 					textArea.Caret.BringCaretToView();
 				}
 			};
@@ -170,18 +170,18 @@ namespace ICSharpCode.AvalonEdit.Editing
 					args.Handled = true;
 					// First, convert the selection into a rectangle selection
 					// (this is required so that virtual space gets enabled for the caret movement)
-					if (textArea.Options.EnableRectangularSelection && !(textArea.Selection is RectangleSelection)) {
-						if (textArea.Selection.IsEmpty) {
-							textArea.Selection = new RectangleSelection(textArea, textArea.Caret.Position, textArea.Caret.Position);
+					if (textArea.Options.EnableRectangularSelection && !(textArea.SelectionManager.Selection is RectangleSelection)) {
+						if (textArea.SelectionManager.Selection.IsEmpty) {
+							textArea.SelectionManager.Selection = new RectangleSelection(textArea, textArea.Caret.Position, textArea.Caret.Position);
 						} else {
 							// Convert normal selection to rectangle selection
-							textArea.Selection = new RectangleSelection(textArea, textArea.Selection.StartPosition, textArea.Caret.Position);
+							textArea.SelectionManager.Selection = new RectangleSelection(textArea, textArea.SelectionManager.Selection.StartPosition, textArea.Caret.Position);
 						}
 					}
 					// Now move the caret and extend the selection
 					TextViewPosition oldPosition = textArea.Caret.Position;
 					MoveCaret(textArea, direction);
-					textArea.Selection = textArea.Selection.StartSelectionOrSetEndpoint(oldPosition, textArea.Caret.Position);
+					textArea.SelectionManager.Selection = textArea.SelectionManager.Selection.StartSelectionOrSetEndpoint(oldPosition, textArea.Caret.Position);
 					textArea.Caret.BringCaretToView();
 				}
 			};
@@ -191,7 +191,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 		internal static void MoveCaret(TextArea textArea, CaretMovementType direction)
 		{
 			double desiredXPos = textArea.Caret.DesiredXPos;
-			textArea.Caret.Position = GetNewCaretPosition(textArea.TextView, textArea.Caret.Position, direction, textArea.Selection.EnableVirtualSpace, ref desiredXPos);
+			textArea.Caret.Position = GetNewCaretPosition(textArea.TextView, textArea.Caret.Position, direction, textArea.SelectionManager.Selection.EnableVirtualSpace, ref desiredXPos);
 			textArea.Caret.DesiredXPos = desiredXPos;
 		}
 

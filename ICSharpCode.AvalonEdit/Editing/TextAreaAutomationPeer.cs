@@ -76,12 +76,12 @@ namespace ICSharpCode.AvalonEdit.Editing
 		public ITextRangeProvider[] GetSelection()
 		{
 			Debug.WriteLine("TextAreaAutomationPeer.GetSelection()");
-			if (TextArea.Selection.IsEmpty) {
+			if (TextArea.SelectionManager.Selection.IsEmpty) {
 				var anchor = TextArea.Document.CreateAnchor(TextArea.Caret.Offset);
 				anchor.SurviveDeletion = true;
 				return new ITextRangeProvider[] { new TextRangeProvider(TextArea, TextArea.Document, new AnchorSegment(anchor, anchor)) };
 			}
-			return TextArea.Selection.Segments.Select(s => new TextRangeProvider(TextArea, TextArea.Document, s)).ToArray();
+			return TextArea.SelectionManager.Selection.Segments.Select(s => new TextRangeProvider(TextArea, TextArea.Document, s)).ToArray();
 		}
 
 		public ITextRangeProvider[] GetVisibleRanges()

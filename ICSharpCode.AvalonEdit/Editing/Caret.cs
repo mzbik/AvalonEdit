@@ -191,7 +191,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 				// If the caret is at the end of a selection, we don't expand the selection if something
 				// is inserted at the end. Thus we also need to keep the caret in front of the insertion.
 				AnchorMovementType caretMovementType;
-				if (!textArea.Selection.IsEmpty && storedCaretOffset == textArea.Selection.SurroundingSegment.EndOffset)
+				if (!textArea.SelectionManager.Selection.IsEmpty && storedCaretOffset == textArea.SelectionManager.Selection.SurroundingSegment.EndOffset)
 					caretMovementType = AnchorMovementType.BeforeInsertion;
 				else
 					caretMovementType = AnchorMovementType.Default;
@@ -322,14 +322,14 @@ namespace ICSharpCode.AvalonEdit.Editing
 
 			int caretOffset = textView.Document.GetOffset(position.Location);
 			int firstDocumentLineOffset = visualLine.FirstDocumentLine.Offset;
-			position.VisualColumn = visualLine.ValidateVisualColumn(position, textArea.Selection.EnableVirtualSpace);
+			position.VisualColumn = visualLine.ValidateVisualColumn(position, textArea.SelectionManager.Selection.EnableVirtualSpace);
 
 			// search possible caret positions
-			int newVisualColumnForwards = visualLine.GetNextCaretPosition(position.VisualColumn - 1, LogicalDirection.Forward, CaretPositioningMode.Normal, textArea.Selection.EnableVirtualSpace);
+			int newVisualColumnForwards = visualLine.GetNextCaretPosition(position.VisualColumn - 1, LogicalDirection.Forward, CaretPositioningMode.Normal, textArea.SelectionManager.Selection.EnableVirtualSpace);
 			// If position.VisualColumn was valid, we're done with validation.
 			if (newVisualColumnForwards != position.VisualColumn) {
 				// also search backwards so that we can pick the better match
-				int newVisualColumnBackwards = visualLine.GetNextCaretPosition(position.VisualColumn + 1, LogicalDirection.Backward, CaretPositioningMode.Normal, textArea.Selection.EnableVirtualSpace);
+				int newVisualColumnBackwards = visualLine.GetNextCaretPosition(position.VisualColumn + 1, LogicalDirection.Backward, CaretPositioningMode.Normal, textArea.SelectionManager.Selection.EnableVirtualSpace);
 
 				if (newVisualColumnForwards < 0 && newVisualColumnBackwards < 0)
 					throw ThrowUtil.NoValidCaretPosition();

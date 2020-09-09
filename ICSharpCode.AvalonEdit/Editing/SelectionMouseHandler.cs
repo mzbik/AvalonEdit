@@ -210,7 +210,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 				e.Effects = effect;
 				if (effect != DragDropEffects.None) {
 					int start = textArea.Caret.Offset;
-					if (mode == MouseSelectionMode.Drag && textArea.Selection.Contains(start)) {
+					if (mode == MouseSelectionMode.Drag && textArea.SelectionManager.Selection.Contains(start)) {
 						Debug.WriteLine("Drop: did not drop: drop target is inside selection");
 						e.Effects = DragDropEffects.None;
 					} else {
@@ -235,7 +235,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 
 							} else {
 								textArea.Document.Insert(start, text);
-								textArea.Selection = Selection.Create(textArea, start, start + text.Length);
+								textArea.SelectionManager.Selection = Selection.Create(textArea, start, start + text.Length);
 							}
 						} finally {
 							textArea.Document.UndoStack.EndUndoGroup();
@@ -300,10 +300,10 @@ namespace ICSharpCode.AvalonEdit.Editing
 			// prevent nested StartDrag calls
 			mode = MouseSelectionMode.Drag;
 
-			DataObject dataObject = textArea.Selection.CreateDataObject(textArea);
+			DataObject dataObject = textArea.SelectionManager.Selection.CreateDataObject(textArea);
 
 			DragDropEffects allowedEffects = DragDropEffects.All;
-			var deleteOnMove = textArea.Selection.Segments.Select(s => new AnchorSegment(textArea.Document, s)).ToList();
+			var deleteOnMove = textArea.SelectionManager.Selection.Segments.Select(s => new AnchorSegment(textArea.Document, s)).ToList();
 			foreach (ISegment s in deleteOnMove) {
 				ISegment[] result = textArea.GetDeletableSegments(s);
 				if (result.Length != 1 || result[0].Offset != s.Offset || result[0].EndOffset != s.EndOffset) {
@@ -375,7 +375,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 						int visualColumn;
 						bool isAtEndOfLine;
 						int offset = GetOffsetFromMousePosition(e, out visualColumn, out isAtEndOfLine);
-						if (enableTextDragDrop && textArea.Selection.Contains(offset))
+						if (enableTextDragDrop && textArea.SelectionManager.Selection.Contains(offset))
 							e.Cursor = Cursors.Arrow;
 						else
 							e.Cursor = Cursors.IBeam;
@@ -401,7 +401,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 					int visualColumn;
 					bool isAtEndOfLine;
 					int offset = GetOffsetFromMousePosition(e, out visualColumn, out isAtEndOfLine);
-					if (textArea.Selection.Contains(offset)) {
+					if (textArea.SelectionManager.Selection.Contains(offset)) {
 						if (textArea.CaptureMouse()) {
 							mode = MouseSelectionMode.PossibleDragStart;
 							possibleDragStartMousePos = e.GetPosition(textArea);
@@ -416,18 +416,18 @@ namespace ICSharpCode.AvalonEdit.Editing
 
 
 				if (!shift) {
-					textArea.ClearSelection();
+					textArea.SelectionManager.ClearSelection();
 				}
 				if (textArea.CaptureMouse()) {
 					if ((modifiers & ModifierKeys.Alt) == ModifierKeys.Alt && textArea.Options.EnableRectangularSelection) {
 						mode = MouseSelectionMode.Rectangular;
-						if (shift && textArea.Selection is RectangleSelection) {
-							textArea.Selection = textArea.Selection.StartSelectionOrSetEndpoint(oldPosition, textArea.Caret.Position);
+						if (shift && textArea.SelectionManager.Selection is RectangleSelection) {
+							textArea.SelectionManager.Selection = textArea.SelectionManager.Selection.StartSelectionOrSetEndpoint(oldPosition, textArea.Caret.Position);
 						}
 					} else if (e.ClickCount == 1 && ((modifiers & ModifierKeys.Control) == 0)) {
 						mode = MouseSelectionMode.Normal;
-						if (shift && !(textArea.Selection is RectangleSelection)) {
-							textArea.Selection = textArea.Selection.StartSelectionOrSetEndpoint(oldPosition, textArea.Caret.Position);
+						if (shift && !(textArea.SelectionManager.Selection is RectangleSelection)) {
+							textArea.SelectionManager.Selection = textArea.SelectionManager.Selection.StartSelectionOrSetEndpoint(oldPosition, textArea.Caret.Position);
 						}
 					} else {
 						SimpleSegment startWord;
@@ -443,15 +443,15 @@ namespace ICSharpCode.AvalonEdit.Editing
 							textArea.ReleaseMouseCapture();
 							return;
 						}
-						if (shift && !textArea.Selection.IsEmpty) {
-							if (startWord.Offset < textArea.Selection.SurroundingSegment.Offset) {
-								textArea.Selection = textArea.Selection.SetEndpoint(new TextViewPosition(textArea.Document.GetLocation(startWord.Offset)));
-							} else if (startWord.EndOffset > textArea.Selection.SurroundingSegment.EndOffset) {
-								textArea.Selection = textArea.Selection.SetEndpoint(new TextViewPosition(textArea.Document.GetLocation(startWord.EndOffset)));
+						if (shift && !textArea.SelectionManager.Selection.IsEmpty) {
+							if (startWord.Offset < textArea.SelectionManager.Selection.SurroundingSegment.Offset) {
+								textArea.SelectionManager.Selection = textArea.SelectionManager.Selection.SetEndpoint(new TextViewPosition(textArea.Document.GetLocation(startWord.Offset)));
+							} else if (startWord.EndOffset > textArea.SelectionManager.Selection.SurroundingSegment.EndOffset) {
+								textArea.SelectionManager.Selection = textArea.SelectionManager.Selection.SetEndpoint(new TextViewPosition(textArea.Document.GetLocation(startWord.EndOffset)));
 							}
-							this.startWord = new AnchorSegment(textArea.Document, textArea.Selection.SurroundingSegment);
+							this.startWord = new AnchorSegment(textArea.Document, textArea.SelectionManager.Selection.SurroundingSegment);
 						} else {
-							textArea.Selection = Selection.Create(textArea, startWord.Offset, startWord.EndOffset);
+							textArea.SelectionManager.Selection = Selection.Create(textArea, startWord.Offset, startWord.EndOffset);
 							this.startWord = new AnchorSegment(textArea.Document, startWord.Offset, startWord.Length);
 						}
 					}
@@ -495,11 +495,11 @@ namespace ICSharpCode.AvalonEdit.Editing
 			pos += textView.ScrollOffset;
 			VisualLine line = textView.GetVisualLineFromVisualTop(pos.Y);
 			if (line != null) {
-				int visualColumn = line.GetVisualColumn(pos, textArea.Selection.EnableVirtualSpace);
-				int wordStartVC = line.GetNextCaretPosition(visualColumn + 1, LogicalDirection.Backward, CaretPositioningMode.WordStartOrSymbol, textArea.Selection.EnableVirtualSpace);
+				int visualColumn = line.GetVisualColumn(pos, textArea.SelectionManager.Selection.EnableVirtualSpace);
+				int wordStartVC = line.GetNextCaretPosition(visualColumn + 1, LogicalDirection.Backward, CaretPositioningMode.WordStartOrSymbol, textArea.SelectionManager.Selection.EnableVirtualSpace);
 				if (wordStartVC == -1)
 					wordStartVC = 0;
-				int wordEndVC = line.GetNextCaretPosition(wordStartVC, LogicalDirection.Forward, CaretPositioningMode.WordBorderOrSymbol, textArea.Selection.EnableVirtualSpace);
+				int wordEndVC = line.GetNextCaretPosition(wordStartVC, LogicalDirection.Forward, CaretPositioningMode.WordBorderOrSymbol, textArea.SelectionManager.Selection.EnableVirtualSpace);
 				if (wordEndVC == -1)
 					wordEndVC = line.VisualLength;
 				int relOffset = line.FirstDocumentLine.Offset;
@@ -548,7 +548,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 				pos.Y = textView.DocumentHeight - ExtensionMethods.Epsilon;
 			VisualLine line = textView.GetVisualLineFromVisualTop(pos.Y);
 			if (line != null) {
-				visualColumn = line.GetVisualColumn(pos, textArea.Selection.EnableVirtualSpace, out isAtEndOfLine);
+				visualColumn = line.GetVisualColumn(pos, textArea.SelectionManager.Selection.EnableVirtualSpace, out isAtEndOfLine);
 				return line.GetRelativeOffset(visualColumn) + line.FirstDocumentLine.Offset;
 			}
 			isAtEndOfLine = false;
@@ -569,7 +569,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 				pos.Y = textView.DocumentHeight - ExtensionMethods.Epsilon;
 			VisualLine line = textView.GetVisualLineFromVisualTop(pos.Y);
 			if (line != null) {
-				visualColumn = line.GetVisualColumn(line.TextLines.First(), pos.X, textArea.Selection.EnableVirtualSpace);
+				visualColumn = line.GetVisualColumn(line.TextLines.First(), pos.X, textArea.SelectionManager.Selection.EnableVirtualSpace);
 				return line.GetRelativeOffset(visualColumn) + line.FirstDocumentLine.Offset;
 			}
 			return -1;
@@ -631,16 +631,16 @@ namespace ICSharpCode.AvalonEdit.Editing
 			TextViewPosition oldPosition = textArea.Caret.Position;
 			if (mode == MouseSelectionMode.Normal || mode == MouseSelectionMode.Rectangular) {
 				SetCaretOffsetToMousePosition(e);
-				if (mode == MouseSelectionMode.Normal && textArea.Selection is RectangleSelection)
-					textArea.Selection = new SimpleSelection(textArea, oldPosition, textArea.Caret.Position);
-				else if (mode == MouseSelectionMode.Rectangular && !(textArea.Selection is RectangleSelection))
-					textArea.Selection = new RectangleSelection(textArea, oldPosition, textArea.Caret.Position);
+				if (mode == MouseSelectionMode.Normal && textArea.SelectionManager.Selection is RectangleSelection)
+					textArea.SelectionManager.Selection = new SimpleSelection(textArea, oldPosition, textArea.Caret.Position);
+				else if (mode == MouseSelectionMode.Rectangular && !(textArea.SelectionManager.Selection is RectangleSelection))
+					textArea.SelectionManager.Selection = new RectangleSelection(textArea, oldPosition, textArea.Caret.Position);
 				else
-					textArea.Selection = textArea.Selection.StartSelectionOrSetEndpoint(oldPosition, textArea.Caret.Position);
+					textArea.SelectionManager.Selection = textArea.SelectionManager.Selection.StartSelectionOrSetEndpoint(oldPosition, textArea.Caret.Position);
 			} else if (mode == MouseSelectionMode.WholeWord || mode == MouseSelectionMode.WholeLine) {
 				var newWord = (mode == MouseSelectionMode.WholeLine) ? GetLineAtMousePosition(e) : GetWordAtMousePosition(e);
 				if (newWord != SimpleSegment.Invalid) {
-					textArea.Selection = Selection.Create(textArea,
+					textArea.SelectionManager.Selection = Selection.Create(textArea,
 														  Math.Min(newWord.Offset, startWord.Offset),
 														  Math.Max(newWord.EndOffset, startWord.EndOffset));
 					// moves caret to start or end of selection
@@ -663,7 +663,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 			if (mode == MouseSelectionMode.PossibleDragStart) {
 				// -> this was not a drag start (mouse didn't move after mousedown)
 				SetCaretOffsetToMousePosition(e);
-				textArea.ClearSelection();
+				textArea.SelectionManager.ClearSelection();
 			} else if (mode == MouseSelectionMode.Normal || mode == MouseSelectionMode.WholeWord || mode == MouseSelectionMode.WholeLine || mode == MouseSelectionMode.Rectangular) {
 				ExtendSelectionToMouse(e);
 			}

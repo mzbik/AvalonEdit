@@ -50,7 +50,7 @@ namespace ICSharpCode.AvalonEdit.Snippets
 				throw new ArgumentNullException("textArea");
 			this.TextArea = textArea;
 			this.Document = textArea.Document;
-			this.SelectedText = textArea.Selection.GetText();
+			this.SelectedText = textArea.SelectionManager.Selection.GetText();
 			this.InsertionPosition = insertionPosition;
 			this.startPosition = insertionPosition;
 

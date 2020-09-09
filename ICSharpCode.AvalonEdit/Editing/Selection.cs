@@ -40,7 +40,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 			if (textArea == null)
 				throw new ArgumentNullException("textArea");
 			if (startOffset == endOffset)
-				return textArea.emptySelection;
+				return textArea.SelectionManager.emptySelection;
 			else
 				return new SimpleSelection(textArea,
 										   new TextViewPosition(textArea.Document.GetLocation(startOffset)),
@@ -52,7 +52,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 			if (textArea == null)
 				throw new ArgumentNullException("textArea");
 			if (textArea.Document.GetOffset(start.Location) == textArea.Document.GetOffset(end.Location) && start.VisualColumn == end.VisualColumn)
-				return textArea.emptySelection;
+				return textArea.SelectionManager.emptySelection;
 			else
 				return new SimpleSelection(textArea, start, end);
 		}

@@ -320,7 +320,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 					int newEndOffset = editOffset + totalInsertionLength;
 					pos = new TextViewPosition(document.GetLocation(editOffset + firstInsertionLength));
 
-					textArea.Selection = new RectangleSelection(textArea, pos, Math.Max(startLine, endLine), GetXPos(textArea, pos));
+					textArea.SelectionManager.Selection = new RectangleSelection(textArea, pos, Math.Max(startLine, endLine), GetXPos(textArea, pos));
 				} else {
 					string[] lines = newText.Split(NewLineFinder.NewlineStrings, segments.Count, StringSplitOptions.None);
 					int line = Math.Min(startLine, endLine);
@@ -329,7 +329,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 						firstInsertionLength = insertionLength;
 					}
 					pos = new TextViewPosition(document.GetLocation(editOffset + firstInsertionLength));
-					textArea.ClearSelection();
+					textArea.SelectionManager.ClearSelection();
 				}
 				textArea.Caret.Position = textArea.TextView.GetPosition(new Point(GetXPos(textArea, pos), textArea.TextView.GetVisualTopByDocumentLine(Math.Max(startLine, endLine)))).GetValueOrDefault();
 			}
@@ -371,12 +371,12 @@ namespace ICSharpCode.AvalonEdit.Editing
 			TextLocation endLocation = new TextLocation(startPosition.Line + newLineCount, startPosition.Column);
 			if (endLocation.Line <= textArea.Document.LineCount) {
 				int endOffset = textArea.Document.GetOffset(endLocation);
-				if (textArea.Selection.EnableVirtualSpace || textArea.Document.GetLocation(endOffset) == endLocation) {
+				if (textArea.SelectionManager.Selection.EnableVirtualSpace || textArea.Document.GetLocation(endOffset) == endLocation) {
 					RectangleSelection rsel = new RectangleSelection(textArea, startPosition, endLocation.Line, GetXPos(textArea, startPosition));
 					rsel.ReplaceSelectionWithText(text);
-					if (selectInsertedText && textArea.Selection is RectangleSelection) {
-						RectangleSelection sel = (RectangleSelection)textArea.Selection;
-						textArea.Selection = new RectangleSelection(textArea, startPosition, sel.endLine, sel.endXPos);
+					if (selectInsertedText && textArea.SelectionManager.Selection is RectangleSelection) {
+						RectangleSelection sel = (RectangleSelection)textArea.SelectionManager.Selection;
+						textArea.SelectionManager.Selection = new RectangleSelection(textArea, startPosition, sel.endLine, sel.endXPos);
 					}
 					return true;
 				}

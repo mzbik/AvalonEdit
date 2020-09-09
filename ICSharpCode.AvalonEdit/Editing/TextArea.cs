@@ -33,7 +33,9 @@ using System.Windows.Threading;
 using ICSharpCode.AvalonEdit.Document;
 using ICSharpCode.AvalonEdit.Indentation;
 using ICSharpCode.AvalonEdit.Rendering;
+using ICSharpCode.AvalonEdit.Editing;
 using ICSharpCode.AvalonEdit.Utils;
+using System.Security.RightsManagement;
 
 namespace ICSharpCode.AvalonEdit.Editing
 {
@@ -72,9 +74,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 			if (textView == null)
 				throw new ArgumentNullException("textView");
 			this.textView = textView;
-			this.Options = textView.Options;
-
-			selection = emptySelection = new EmptySelection(this);
+			Options = textView.Options;
 
 			textView.Services.AddService(typeof(TextArea), this);
 
@@ -89,8 +89,11 @@ namespace ICSharpCode.AvalonEdit.Editing
 
 			leftMargins.CollectionChanged += leftMargins_CollectionChanged;
 
-			this.DefaultInputHandler = new TextAreaDefaultInputHandler(this);
-			this.ActiveInputHandler = this.DefaultInputHandler;
+			DefaultInputHandler = new TextAreaDefaultInputHandler(this);
+			ActiveInputHandler = DefaultInputHandler;
+
+			selectionManager = new SelectionManager(this);
+			SelectionChanged += OnSelectionChanged;
 		}
 		#endregion
 
@@ -224,7 +227,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 			// Reset caret location and selection: this is necessary because the caret/selection might be invalid
 			// in the new document (e.g. if new document is shorter than the old document).
 			caret.Location = new TextLocation(1, 1);
-			this.ClearSelection();
+			this.SelectionManager.ClearSelection();
 			if (DocumentChanged != null)
 				DocumentChanged(this, EventArgs.Empty);
 			CommandManager.InvalidateRequerySuggested();
@@ -317,7 +320,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 		void OnDocumentChanged(DocumentChangeEventArgs e)
 		{
 			caret.OnDocumentChanged(e);
-			this.Selection = selection.UpdateOnDocumentChange(e);
+			SelectionManager.UpdateOnDocumentChanged(e);
 		}
 
 		void OnUpdateStarted()
@@ -343,7 +346,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 				// Just save the old caret position, no need to validate here.
 				// If we restore it, we'll validate it anyways.
 				this.caretPosition = textArea.Caret.NonValidatedPosition;
-				this.selection = textArea.Selection;
+				this.selection = textArea.SelectionManager.Selection;
 			}
 
 			public void Undo()
@@ -351,7 +354,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 				TextArea textArea = (TextArea)textAreaReference.Target;
 				if (textArea != null) {
 					textArea.Caret.Position = caretPosition;
-					textArea.Selection = selection;
+					textArea.SelectionManager.Selection = selection;
 				}
 			}
 
@@ -385,8 +388,11 @@ namespace ICSharpCode.AvalonEdit.Editing
 		#endregion
 
 		#region Selection property
-		internal readonly Selection emptySelection;
-		Selection selection;
+		internal SelectionManager selectionManager;
+		internal SelectionManager SelectionManager {
+			get { return selectionManager; }
+
+		}
 
 		/// <summary>
 		/// Occurs when the selection has changed.
@@ -394,57 +400,61 @@ namespace ICSharpCode.AvalonEdit.Editing
 		public event EventHandler SelectionChanged;
 
 		/// <summary>
-		/// Gets/Sets the selection in this text area.
+		/// When selection has changed, the before/after images are 
+		/// passed to event recipients
 		/// </summary>
-		public Selection Selection {
-			get { return selection; }
-			set {
-				if (value == null)
-					throw new ArgumentNullException("value");
-				if (value.textArea != this)
-					throw new ArgumentException("Cannot use a Selection instance that belongs to another text area.");
-				if (!object.Equals(selection, value)) {
-					//					Debug.WriteLine("Selection change from " + selection + " to " + value);
-					if (textView != null) {
-						ISegment oldSegment = selection.SurroundingSegment;
-						ISegment newSegment = value.SurroundingSegment;
-						if (!Selection.EnableVirtualSpace && (selection is SimpleSelection && value is SimpleSelection && oldSegment != null && newSegment != null)) {
-							// perf optimization:
-							// When a simple selection changes, don't redraw the whole selection, but only the changed parts.
-							int oldSegmentOffset = oldSegment.Offset;
-							int newSegmentOffset = newSegment.Offset;
-							if (oldSegmentOffset != newSegmentOffset) {
-								textView.Redraw(Math.Min(oldSegmentOffset, newSegmentOffset),
-												Math.Abs(oldSegmentOffset - newSegmentOffset),
-												DispatcherPriority.Render);
-							}
-							int oldSegmentEndOffset = oldSegment.EndOffset;
-							int newSegmentEndOffset = newSegment.EndOffset;
-							if (oldSegmentEndOffset != newSegmentEndOffset) {
-								textView.Redraw(Math.Min(oldSegmentEndOffset, newSegmentEndOffset),
-												Math.Abs(oldSegmentEndOffset - newSegmentEndOffset),
-												DispatcherPriority.Render);
-							}
-						} else {
-							textView.Redraw(oldSegment, DispatcherPriority.Render);
-							textView.Redraw(newSegment, DispatcherPriority.Render);
-						}
-					}
-					selection = value;
-					if (SelectionChanged != null)
-						SelectionChanged(this, EventArgs.Empty);
-					// a selection change causes commands like copy/paste/etc. to change status
-					CommandManager.InvalidateRequerySuggested();
-				}
+		public class SelectionChangedArgs: EventArgs
+		{
+			public SelectionChangedArgs( Selection oldSelection, Selection newSelection)
+			{
+				OldSelection = oldSelection;
+				NewSelection = newSelection;
 			}
+
+			public Selection OldSelection;
+			public Selection NewSelection;
 		}
 
 		/// <summary>
-		/// Clears the current selection.
+		/// Raises selection change event after actual change in SelectionHandler
 		/// </summary>
-		public void ClearSelection()
+		public void RaiseSelectionChanged(Selection oldSelection, Selection newSelection)
 		{
-			this.Selection = emptySelection;
+			SelectionChanged(this, new SelectionChangedArgs(oldSelection, newSelection));
+		}
+
+		/// <summary>
+		/// Redraws selection when selection changes
+		/// </summary>
+		public void OnSelectionChanged(object sender, EventArgs e)
+		{
+			SelectionChangedArgs changeArgs = e as SelectionChangedArgs;
+
+			if (textView != null) {
+				ISegment oldSegment = changeArgs.OldSelection.SurroundingSegment;
+				ISegment newSegment = changeArgs.NewSelection.SurroundingSegment;
+				if (!SelectionManager.Selection.EnableVirtualSpace && (changeArgs.OldSelection is SimpleSelection && changeArgs.NewSelection is SimpleSelection && oldSegment != null && newSegment != null)) {
+					// perf optimization:
+					// When a simple selection changes, don't redraw the whole selection, but only the changed parts.
+					int oldSegmentOffset = oldSegment.Offset;
+					int newSegmentOffset = newSegment.Offset;
+					if (oldSegmentOffset != newSegmentOffset) {
+						textView.Redraw(Math.Min(oldSegmentOffset, newSegmentOffset),
+										Math.Abs(oldSegmentOffset - newSegmentOffset),
+										DispatcherPriority.Render);
+					}
+					int oldSegmentEndOffset = oldSegment.EndOffset;
+					int newSegmentEndOffset = newSegment.EndOffset;
+					if (oldSegmentEndOffset != newSegmentEndOffset) {
+						textView.Redraw(Math.Min(oldSegmentEndOffset, newSegmentEndOffset),
+										Math.Abs(oldSegmentEndOffset - newSegmentEndOffset),
+										DispatcherPriority.Render);
+					}
+				} else {
+					textView.Redraw(oldSegment, DispatcherPriority.Render);
+					textView.Redraw(newSegment, DispatcherPriority.Render);
+				}
+			}
 		}
 
 		/// <summary>
@@ -563,9 +573,9 @@ namespace ICSharpCode.AvalonEdit.Editing
 		{
 			ensureSelectionValidRequested = false;
 			if (allowCaretOutsideSelection == 0) {
-				if (!selection.IsEmpty && !selection.Contains(caret.Offset)) {
+				if (!SelectionManager.Selection.IsEmpty && !SelectionManager.Selection.Contains(caret.Offset)) {
 					Debug.WriteLine("Resetting selection because caret is outside");
-					this.ClearSelection();
+					this.SelectionManager.ClearSelection();
 				}
 			}
 		}
@@ -911,7 +921,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 				if (e.Text == "\n" || e.Text == "\r" || e.Text == "\r\n")
 					ReplaceSelectionWithNewLine();
 				else {
-					if (OverstrikeMode && Selection.IsEmpty && Document.GetLineByNumber(Caret.Line).EndOffset > Caret.Offset)
+					if (OverstrikeMode && SelectionManager.Selection.IsEmpty && Document.GetLineByNumber(Caret.Line).EndOffset > Caret.Offset)
 						EditingCommands.SelectRightByCharacter.Execute(null, this);
 					ReplaceSelectionWithText(e.Text);
 				}
@@ -940,10 +950,10 @@ namespace ICSharpCode.AvalonEdit.Editing
 		{
 			if (this.Document == null)
 				throw ThrowUtil.NoDocumentAssigned();
-			selection.ReplaceSelectionWithText(string.Empty);
+			SelectionManager.Selection.ReplaceSelectionWithText(string.Empty);
 #if DEBUG
-			if (!selection.IsEmpty) {
-				foreach (ISegment s in selection.Segments) {
+			if (!SelectionManager.Selection.IsEmpty) {
+				foreach (ISegment s in SelectionManager.Selection.Segments) {
 					Debug.Assert(this.ReadOnlySectionProvider.GetDeletableSegments(s).Count() == 0);
 				}
 			}
@@ -956,7 +966,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 				throw new ArgumentNullException("newText");
 			if (this.Document == null)
 				throw ThrowUtil.NoDocumentAssigned();
-			selection.ReplaceSelectionWithText(newText);
+			SelectionManager.Selection.ReplaceSelectionWithText(newText);
 		}
 
 		internal ISegment[] GetDeletableSegments(ISegment segment)

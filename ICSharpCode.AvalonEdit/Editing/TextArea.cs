@@ -89,6 +89,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 
 			leftMargins.CollectionChanged += leftMargins_CollectionChanged;
 
+			textInputHandler = new TextInputHandler(this);
 			DefaultInputHandler = new TextAreaDefaultInputHandler(this);
 			ActiveInputHandler = DefaultInputHandler;
 
@@ -418,7 +419,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 		/// <summary>
 		/// Raises selection change event after actual change in SelectionHandler
 		/// </summary>
-		public void RaiseSelectionChanged(Selection oldSelection, Selection newSelection)
+		public void OnSelectionChanged(Selection oldSelection, Selection newSelection)
 		{
 			SelectionChanged(this, new SelectionChangedArgs(oldSelection, newSelection));
 		}
@@ -646,7 +647,9 @@ namespace ICSharpCode.AvalonEdit.Editing
 				}
 			}
 		}
+		#endregion
 
+		#region Read only sections
 		IReadOnlySectionProvider readOnlySectionProvider = NoReadOnlySections.Instance;
 
 		/// <summary>
@@ -834,7 +837,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 		}
 		#endregion
 
-		#region OnTextInput / RemoveSelectedText / ReplaceSelectionWithText
+		#region Text Input
 		/// <summary>
 		/// Occurs when the TextArea receives text input.
 		/// This is like the <see cref="UIElement.TextInput"/> event,
@@ -850,9 +853,16 @@ namespace ICSharpCode.AvalonEdit.Editing
 		public event TextCompositionEventHandler TextEntered;
 
 		/// <summary>
+		/// Handles all text input
+		/// </summary>
+		private TextInputHandler textInputHandler;
+
+		public TextInputHandler TextInputHandler { get { return textInputHandler; } }
+
+		/// <summary>
 		/// Raises the TextEntering event.
 		/// </summary>
-		protected virtual void OnTextEntering(TextCompositionEventArgs e)
+		public virtual void OnTextEntering(TextCompositionEventArgs e)
 		{
 			if (TextEntering != null) {
 				TextEntering(this, e);
@@ -862,7 +872,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 		/// <summary>
 		/// Raises the TextEntered event.
 		/// </summary>
-		protected virtual void OnTextEntered(TextCompositionEventArgs e)
+		public virtual void OnTextEntered(TextCompositionEventArgs e)
 		{
 			if (TextEntered != null) {
 				TextEntered(this, e);
@@ -887,104 +897,11 @@ namespace ICSharpCode.AvalonEdit.Editing
 					return;
 				}
 				HideMouseCursor();
-				PerformTextInput(e);
+				TextInputHandler.PerformTextInput(e);
 				e.Handled = true;
 			}
 		}
 
-		/// <summary>
-		/// Performs text input.
-		/// This raises the <see cref="TextEntering"/> event, replaces the selection with the text,
-		/// and then raises the <see cref="TextEntered"/> event.
-		/// </summary>
-		public void PerformTextInput(string text)
-		{
-			TextComposition textComposition = new TextComposition(InputManager.Current, this, text);
-			TextCompositionEventArgs e = new TextCompositionEventArgs(Keyboard.PrimaryDevice, textComposition);
-			e.RoutedEvent = TextInputEvent;
-			PerformTextInput(e);
-		}
-
-		/// <summary>
-		/// Performs text input.
-		/// This raises the <see cref="TextEntering"/> event, replaces the selection with the text,
-		/// and then raises the <see cref="TextEntered"/> event.
-		/// </summary>
-		public void PerformTextInput(TextCompositionEventArgs e)
-		{
-			if (e == null)
-				throw new ArgumentNullException("e");
-			if (this.Document == null)
-				throw ThrowUtil.NoDocumentAssigned();
-			OnTextEntering(e);
-			if (!e.Handled) {
-				if (e.Text == "\n" || e.Text == "\r" || e.Text == "\r\n")
-					ReplaceSelectionWithNewLine();
-				else {
-					if (OverstrikeMode && SelectionManager.Selection.IsEmpty && Document.GetLineByNumber(Caret.Line).EndOffset > Caret.Offset)
-						EditingCommands.SelectRightByCharacter.Execute(null, this);
-					ReplaceSelectionWithText(e.Text);
-				}
-				OnTextEntered(e);
-				caret.BringCaretToView();
-			}
-		}
-
-		void ReplaceSelectionWithNewLine()
-		{
-			string newLine = TextUtilities.GetNewLineFromDocument(this.Document, this.Caret.Line);
-			using (this.Document.RunUpdate()) {
-				ReplaceSelectionWithText(newLine);
-				if (this.IndentationStrategy != null) {
-					DocumentLine line = this.Document.GetLineByNumber(this.Caret.Line);
-					ISegment[] deletable = GetDeletableSegments(line);
-					if (deletable.Length == 1 && deletable[0].Offset == line.Offset && deletable[0].Length == line.Length) {
-						// use indentation strategy only if the line is not read-only
-						this.IndentationStrategy.IndentLine(this.Document, line);
-					}
-				}
-			}
-		}
-
-		internal void RemoveSelectedText()
-		{
-			if (this.Document == null)
-				throw ThrowUtil.NoDocumentAssigned();
-			SelectionManager.Selection.ReplaceSelectionWithText(string.Empty);
-#if DEBUG
-			if (!SelectionManager.Selection.IsEmpty) {
-				foreach (ISegment s in SelectionManager.Selection.Segments) {
-					Debug.Assert(this.ReadOnlySectionProvider.GetDeletableSegments(s).Count() == 0);
-				}
-			}
-#endif
-		}
-
-		internal void ReplaceSelectionWithText(string newText)
-		{
-			if (newText == null)
-				throw new ArgumentNullException("newText");
-			if (this.Document == null)
-				throw ThrowUtil.NoDocumentAssigned();
-			SelectionManager.Selection.ReplaceSelectionWithText(newText);
-		}
-
-		internal ISegment[] GetDeletableSegments(ISegment segment)
-		{
-			var deletableSegments = this.ReadOnlySectionProvider.GetDeletableSegments(segment);
-			if (deletableSegments == null)
-				throw new InvalidOperationException("ReadOnlySectionProvider.GetDeletableSegments returned null");
-			var array = deletableSegments.ToArray();
-			int lastIndex = segment.Offset;
-			for (int i = 0; i < array.Length; i++) {
-				if (array[i].Offset < lastIndex)
-					throw new InvalidOperationException("ReadOnlySectionProvider returned incorrect segments (outside of input segment / wrong order)");
-				lastIndex = array[i].EndOffset;
-			}
-			if (lastIndex > segment.EndOffset)
-				throw new InvalidOperationException("ReadOnlySectionProvider returned incorrect segments (outside of input segment / wrong order)");
-			return array;
-		}
 		#endregion
 
 		#region IndentationStrategy property

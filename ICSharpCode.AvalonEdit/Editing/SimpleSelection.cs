@@ -64,7 +64,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 			if (newText == null)
 				throw new ArgumentNullException("newText");
 			using (textArea.Document.RunUpdate()) {
-				ISegment[] segmentsToDelete = textArea.GetDeletableSegments(this.SurroundingSegment);
+				ISegment[] segmentsToDelete = textArea.TextInputHandler.GetDeletableSegments(this.SurroundingSegment);
 				for (int i = segmentsToDelete.Length - 1; i >= 0; i--) {
 					if (i == segmentsToDelete.Length - 1) {
 						if (segmentsToDelete[i].Offset == SurroundingSegment.Offset && segmentsToDelete[i].Length == SurroundingSegment.Length) {

@@ -51,7 +51,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 					//					Debug.WriteLine("Selection change from " + selection + " to " + value);
 					var oldSelection = selection;
 					selection = value;
-					textArea.RaiseSelectionChanged(oldSelection, selection);
+					textArea.OnSelectionChanged(oldSelection, selection);
 
 					// a selection change causes commands like copy/paste/etc. to change status
 					CommandManager.InvalidateRequerySuggested();

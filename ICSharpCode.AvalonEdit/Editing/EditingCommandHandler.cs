@@ -168,7 +168,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 					}
 					if (segments != null) {
 						foreach (ISegment segment in segments.Reverse()) {
-							foreach (ISegment writableSegment in textArea.GetDeletableSegments(segment).Reverse()) {
+							foreach (ISegment writableSegment in textArea.TextInputHandler.GetDeletableSegments(segment).Reverse()) {
 								transformSegment(textArea, writableSegment);
 							}
 						}
@@ -185,7 +185,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 		{
 			TextArea textArea = GetTextArea(target);
 			if (textArea != null && textArea.IsKeyboardFocused) {
-				textArea.PerformTextInput("\n");
+				textArea.TextInputHandler.PerformTextInput("\n");
 				args.Handled = true;
 			}
 		}
@@ -215,7 +215,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 						}
 					} else {
 						string indentationString = textArea.Options.GetIndentationString(textArea.Caret.Column);
-						textArea.ReplaceSelectionWithText(indentationString);
+						textArea.TextInputHandler.ReplaceSelectionWithText(indentationString);
 					}
 				}
 				textArea.Caret.BringCaretToView();
@@ -230,7 +230,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 					int offset = line.Offset;
 					ISegment s = TextUtilities.GetSingleIndentationSegment(textArea.Document, offset, textArea.Options.IndentationSize);
 					if (s.Length > 0) {
-						s = textArea.GetDeletableSegments(s).FirstOrDefault();
+						s = textArea.TextInputHandler.GetDeletableSegments(s).FirstOrDefault();
 						if (s != null && s.Length > 0) {
 							textArea.Document.Remove(s.Offset, s.Length);
 						}
@@ -266,7 +266,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 						textArea.SelectionManager.Selection.StartSelectionOrSetEndpoint(startPos, endPos)
 							.ReplaceSelectionWithText(string.Empty);
 					} else {
-						textArea.RemoveSelectedText();
+						textArea.TextInputHandler.RemoveSelectedText();
 					}
 					textArea.Caret.BringCaretToView();
 					args.Handled = true;
@@ -317,14 +317,14 @@ namespace ICSharpCode.AvalonEdit.Editing
 				if (textArea.SelectionManager.Selection.IsEmpty && textArea.Options.CutCopyWholeLine) {
 					DocumentLine currentLine = textArea.Document.GetLineByNumber(textArea.Caret.Line);
 					if (CopyWholeLine(textArea, currentLine)) {
-						ISegment[] segmentsToDelete = textArea.GetDeletableSegments(new SimpleSegment(currentLine.Offset, currentLine.TotalLength));
+						ISegment[] segmentsToDelete = textArea.TextInputHandler.GetDeletableSegments(new SimpleSegment(currentLine.Offset, currentLine.TotalLength));
 						for (int i = segmentsToDelete.Length - 1; i >= 0; i--) {
 							textArea.Document.Remove(segmentsToDelete[i]);
 						}
 					}
 				} else {
 					if (CopySelectedText(textArea))
-						textArea.RemoveSelectedText();
+						textArea.TextInputHandler.RemoveSelectedText();
 				}
 				textArea.Caret.BringCaretToView();
 				args.Handled = true;
@@ -444,9 +444,9 @@ namespace ICSharpCode.AvalonEdit.Editing
 						}
 					} else if (rectangular && textArea.SelectionManager.Selection.IsEmpty && !(textArea.SelectionManager.Selection is RectangleSelection)) {
 						if (!RectangleSelection.PerformRectangularPaste(textArea, textArea.Caret.Position, text, false))
-							textArea.ReplaceSelectionWithText(text);
+							textArea.TextInputHandler.ReplaceSelectionWithText(text);
 					} else {
-						textArea.ReplaceSelectionWithText(text);
+						textArea.TextInputHandler.ReplaceSelectionWithText(text);
 					}
 				}
 				textArea.Caret.BringCaretToView();
@@ -512,7 +512,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 				DocumentLine startLine = textArea.Document.GetLineByNumber(firstLineIndex);
 				DocumentLine endLine = textArea.Document.GetLineByNumber(lastLineIndex);
 				textArea.SelectionManager.Selection = Selection.Create(textArea, startLine.Offset, endLine.Offset + endLine.TotalLength);
-				textArea.RemoveSelectedText();
+				textArea.TextInputHandler.RemoveSelectedText();
 				args.Handled = true;
 			}
 		}

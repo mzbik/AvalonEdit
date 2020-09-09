@@ -305,7 +305,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 			DragDropEffects allowedEffects = DragDropEffects.All;
 			var deleteOnMove = textArea.SelectionManager.Selection.Segments.Select(s => new AnchorSegment(textArea.Document, s)).ToList();
 			foreach (ISegment s in deleteOnMove) {
-				ISegment[] result = textArea.GetDeletableSegments(s);
+				ISegment[] result = textArea.TextInputHandler.GetDeletableSegments(s);
 				if (result.Length != 1 || result[0].Offset != s.Offset || result[0].EndOffset != s.EndOffset) {
 					allowedEffects &= ~DragDropEffects.Move;
 				}

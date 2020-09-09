@@ -343,7 +343,7 @@ namespace ICSharpCode.AvalonEdit.Editing
 					textArea.Document.Insert(lineSegment.StartOffset, newText);
 				}
 			} else {
-				ISegment[] segmentsToDelete = textArea.GetDeletableSegments(lineSegment);
+				ISegment[] segmentsToDelete = textArea.TextInputHandler.GetDeletableSegments(lineSegment);
 				for (int i = segmentsToDelete.Length - 1; i >= 0; i--) {
 					if (i == segmentsToDelete.Length - 1) {
 						if (segmentsToDelete[i].Offset == SurroundingSegment.Offset && segmentsToDelete[i].Length == SurroundingSegment.Length) {
